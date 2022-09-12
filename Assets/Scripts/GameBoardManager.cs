@@ -8,15 +8,24 @@ public class GameBoardManager : MonoBehaviour
     // variables
     private Vector2 preMousePos;
     private Vector2 postMousePos;
+    private Vector2 swipe;
+    public Vector2 selectedCandyPosition;
+
+    private static int boardWidth = 7;
+    private static int boardHeight = 7;
+    private int row;
+    private int col;
+    private bool hit;
     // end of variables
 
     // game objects
-    public GameObject[,] candies = new GameObject[7, 7];
-    public int[,] array = new int[7, 7];
+    public GameObject candyBackground;
+
+    public GameObject[,] candies = new GameObject[boardWidth, boardHeight];
+    public GameObject[,] destroyer = new GameObject[boardWidth, boardHeight];
     public GameObject[] prefabs;
     public GameObject selectedCandy;
     public GameObject selectedNeighbor;
-    public Vector2 selectedCandyPosition;
     // end of game objects
 
 
@@ -27,6 +36,7 @@ public class GameBoardManager : MonoBehaviour
     {
 
         GenerateBoard();
+        CheckBoardForCombos();
 
     }
 
@@ -45,13 +55,17 @@ public class GameBoardManager : MonoBehaviour
                 Debug.Log(hitInfo.transform.gameObject.tag);
                 selectedCandy = hitInfo.transform.gameObject;
                 selectedCandyPosition = selectedCandy.transform.localPosition;
+                row = (int)selectedCandyPosition.x;
+                col = (int)selectedCandyPosition.y;
                 //Debug.Log("Selected candy is " + selectedCandy.name + ". Position is " + hitInfo.transform.localPosition);
                 Debug.Log("Selected pos" + selectedCandyPosition);
+
+                hit = true;
 
             }
             else
             {
-
+                hit = false;
                 Debug.Log("No hit");
 
             }
@@ -61,38 +75,138 @@ public class GameBoardManager : MonoBehaviour
         if (Input.GetMouseButtonUp(0))
         {
 
-            Vector2 distanceBetweenMousePositions;
-            //postMousePos = Input.mousePosition;
-            postMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            distanceBetweenMousePositions = postMousePos - preMousePos;
-            //Debug.Log("pre : " + preMousePos + ", post : " + postMousePos);
-            //Debug.Log("Raw x : " + distanceBetweenMousePositions.x + ", Raw y : " + distanceBetweenMousePositions.y);
+            if (hit)
+            {
 
-            Vector2 swipe;
-            swipe.x = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.x), -1, 1);
-            swipe.y = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.y), -1, 1);
-            Debug.Log("Swipe" + swipe);
+                Vector2 distanceBetweenMousePositions;
+                //postMousePos = Input.mousePosition;
+                postMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                distanceBetweenMousePositions = postMousePos - preMousePos;
+                //Debug.Log("pre : " + preMousePos + ", post : " + postMousePos);
+                //Debug.Log("Raw x : " + distanceBetweenMousePositions.x + ", Raw y : " + distanceBetweenMousePositions.y);
 
-            Vector2 selectedNeighborPosition =  selectedCandyPosition + swipe;
-            Debug.Log("Selectet neighbor" + selectedNeighborPosition);
 
-            selectedNeighbor = candies[(int)selectedNeighborPosition.x, (int)selectedNeighborPosition.y];
+                swipe.x = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.x), -1, 1);
+                swipe.y = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.y), -1, 1);
+                Debug.Log("Swipe" + swipe);
 
-            Debug.Log("x : " + swipe.x + ", y : " + swipe.y);
+                Vector2 selectedNeighborPosition = selectedCandyPosition + swipe;
+                Debug.Log("Selectet neighbor" + selectedNeighborPosition);
 
-            SwipeOperations(swipe);
+                selectedNeighbor = candies[(int)selectedNeighborPosition.x, (int)selectedNeighborPosition.y];
+
+                Debug.Log("x : " + swipe.x + ", y : " + swipe.y);
+
+                SwipeOperations(swipe);
+
+            }
+
         }
 
     }
 
-    // This method generates 7x7 gameboard
+    private void CheckBoardForCombos()
+    {
+
+        VerticalComboCheck();
+        HorizontalComboCheck();
+
+    }
+
+
+    // This method checks combos which are at horizontal
+    private void HorizontalComboCheck()
+    {
+        // horizontal check
+        for (int i = 0; i < boardWidth; i++)
+        {
+
+            for (int j = 0; j < boardHeight; j++)
+            {
+
+                int combo = 0;
+                int postY = j + 1;
+
+                while (postY < boardHeight && candies[i, j].name == candies[i, postY].name)
+                {
+
+                    combo++;
+
+                    postY += 1;
+
+                }
+                if (combo >= 2)
+                {
+
+                    int endOfCombo = postY - 1;
+
+                    for (int k = endOfCombo; k > j; k--)
+                    {
+
+                        destroyer[i, j] = candies[i, j];
+                        destroyer[i, k] = candies[i, k];
+
+                        GameObject go = Instantiate(candyBackground, candies[i, k].transform.position, candyBackground.transform.rotation);
+                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
+                        go = Instantiate(candyBackground, candies[i, j].transform.position, candyBackground.transform.rotation);
+                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
+
+                    }
+                }
+            }
+        }
+    }
+
+    // This method checks combos which are at vertical
+    private void VerticalComboCheck()
+    {
+        // vertical check
+        for (int j = 0; j < boardHeight; j++)
+        {
+
+            for (int i = 0; i < boardWidth; i++)
+            {
+                int combo = 0;
+
+                int postX = i + 1;
+
+                while (postX < boardWidth && candies[i, j].name == candies[postX, j].name)
+                {
+                    combo++;
+
+                    postX += 1;
+
+                }
+                if (combo >= 2)
+                {
+
+                    int endOfCombo = postX - 1;
+
+                    for (int k = endOfCombo; k > i; k--)
+                    {
+
+                        destroyer[i, j] = candies[i, j];
+                        destroyer[k, j] = candies[k, j];
+
+                        GameObject go = Instantiate(candyBackground, candies[k, j].transform.position, candyBackground.transform.rotation);
+                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
+                        go = Instantiate(candyBackground, candies[i, j].transform.position, candyBackground.transform.rotation);
+                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
+
+                    }
+                }
+            }
+        }
+    }
+
+    // This method generates boardWidth x boardHeight gameboard
     public void GenerateBoard()
     {
 
-        for (int i = 0; i < 7; i++)
+        for (int i = 0; i < boardHeight; i++)
         {
 
-            for (int j = 0; j < 7; j++)
+            for (int j = 0; j < boardWidth; j++)
             {
 
                 int randomCandyIndex = Random.Range(0, prefabs.Length);
@@ -107,16 +221,6 @@ public class GameBoardManager : MonoBehaviour
 
         }
 
-        //for (int i = 0; i < 7; i++)
-        //{
-
-        //    for (int j = 0; j < 7; j++)
-        //    {
-        //        Debug.Log(" i : " + i + ", j : " + j +  "----" + candies[i, j].gameObject.name);
-        //    }
-
-        //}
-
     }
 
     private void SwipeOperations(Vector2 move)
@@ -130,6 +234,8 @@ public class GameBoardManager : MonoBehaviour
         candies[(int)selectedCandy.transform.localPosition.x, (int)selectedCandy.transform.localPosition.y] = selectedCandy;
         candies[(int)selectedNeighbor.transform.localPosition.x, (int)selectedNeighbor.transform.localPosition.y] = selectedNeighbor;
 
+
+        CheckBoardForCombos();
     }
 
 }
