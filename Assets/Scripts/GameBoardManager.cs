@@ -10,7 +10,6 @@ public class GameBoardManager : MonoBehaviour
     private Vector2 postMousePos;
     private Vector2 swipe;
     public Vector2 selectedCandyPosition;
-
     private static int boardWidth = 7;
     private static int boardHeight = 7;
     private int row;
@@ -18,17 +17,16 @@ public class GameBoardManager : MonoBehaviour
     private bool hit;
     // end of variables
 
+
     // game objects
     public GameObject candyBackground;
-
     public GameObject[,] candies = new GameObject[boardWidth, boardHeight];
     public GameObject[,] destroyer = new GameObject[boardWidth, boardHeight];
     public GameObject[] prefabs;
+    public GameObject explosionPrefab;
     public GameObject selectedCandy;
     public GameObject selectedNeighbor;
     // end of game objects
-
-
 
 
 
@@ -36,7 +34,6 @@ public class GameBoardManager : MonoBehaviour
     {
 
         GenerateBoard();
-        CheckBoardForCombos();
 
     }
 
@@ -55,9 +52,8 @@ public class GameBoardManager : MonoBehaviour
                 Debug.Log(hitInfo.transform.gameObject.tag);
                 selectedCandy = hitInfo.transform.gameObject;
                 selectedCandyPosition = selectedCandy.transform.localPosition;
-                row = (int)selectedCandyPosition.x;
-                col = (int)selectedCandyPosition.y;
-                //Debug.Log("Selected candy is " + selectedCandy.name + ". Position is " + hitInfo.transform.localPosition);
+                //row = (int)selectedCandyPosition.x;
+                //col = (int)selectedCandyPosition.y;
                 Debug.Log("Selected pos" + selectedCandyPosition);
 
                 hit = true;
@@ -65,11 +61,11 @@ public class GameBoardManager : MonoBehaviour
             }
             else
             {
+
                 hit = false;
                 Debug.Log("No hit");
 
             }
-
         }
 
         if (Input.GetMouseButtonUp(0))
@@ -79,12 +75,8 @@ public class GameBoardManager : MonoBehaviour
             {
 
                 Vector2 distanceBetweenMousePositions;
-                //postMousePos = Input.mousePosition;
                 postMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                 distanceBetweenMousePositions = postMousePos - preMousePos;
-                //Debug.Log("pre : " + preMousePos + ", post : " + postMousePos);
-                //Debug.Log("Raw x : " + distanceBetweenMousePositions.x + ", Raw y : " + distanceBetweenMousePositions.y);
-
 
                 swipe.x = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.x), -1, 1);
                 swipe.y = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.y), -1, 1);
@@ -100,17 +92,81 @@ public class GameBoardManager : MonoBehaviour
                 SwipeOperations(swipe);
 
             }
-
         }
 
+        CheckBoardForCombos();
+
     }
+
 
     private void CheckBoardForCombos()
     {
 
+        GenerateBoard();
         VerticalComboCheck();
         HorizontalComboCheck();
+        DestroyCombos();
+        DropTheCandies();
 
+    }
+
+
+    // This method generates boardWidth x boardHeight gameboard
+    public void GenerateBoard()
+    {
+
+        for (int i = 0; i < boardHeight; i++)
+        {
+            for (int j = 0; j < boardWidth; j++)
+            {
+
+                if (candies[i, j] == null)
+                {
+
+                    FillTheGaps(i, j);
+
+                }
+            }
+        }
+    }
+
+
+    // This method checks combos which are at vertical
+    private void VerticalComboCheck()
+    {
+        // vertical check
+        for (int j = 0; j < boardHeight; j++)
+        {
+
+            for (int i = 0; i < boardWidth; i++)
+            {
+                int combo = 0;
+
+                int postX = i + 1;
+
+                while (postX < boardWidth && candies[i, j].name == candies[postX, j].name)
+                {
+
+                    combo++;
+
+                    postX += 1;
+
+                }
+                if (combo >= 2)
+                {
+
+                    int endOfCombo = postX - 1;
+
+                    for (int k = endOfCombo; k > i; k--)
+                    {
+
+                        destroyer[i, j] = candies[i, j];
+                        destroyer[k, j] = candies[k, j];
+
+                    }
+                }
+            }
+        }
     }
 
 
@@ -146,52 +202,64 @@ public class GameBoardManager : MonoBehaviour
                         destroyer[i, j] = candies[i, j];
                         destroyer[i, k] = candies[i, k];
 
-                        GameObject go = Instantiate(candyBackground, candies[i, k].transform.position, candyBackground.transform.rotation);
-                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
-                        go = Instantiate(candyBackground, candies[i, j].transform.position, candyBackground.transform.rotation);
-                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
-
                     }
                 }
             }
         }
     }
 
-    // This method checks combos which are at vertical
-    private void VerticalComboCheck()
+
+    // This method destroys combos and fills in the gaps
+    private void DestroyCombos()
     {
-        // vertical check
+
         for (int j = 0; j < boardHeight; j++)
         {
 
             for (int i = 0; i < boardWidth; i++)
             {
-                int combo = 0;
 
-                int postX = i + 1;
-
-                while (postX < boardWidth && candies[i, j].name == candies[postX, j].name)
+                if (destroyer[i, j] != null)
                 {
-                    combo++;
 
-                    postX += 1;
+                    Destroy(destroyer[i, j].gameObject);
+
+                    // Instantiate explosion animation for explosions
+                    GameObject explosionAnim = Instantiate(explosionPrefab, destroyer[i, j].transform.position, explosionPrefab.transform.rotation);
+                    Destroy(explosionAnim.gameObject, 0.667f); // Destroy time equals animation time for smoother transition
+
+                    destroyer[i, j] = null;
+                    candies[i, j] = null;
 
                 }
-                if (combo >= 2)
+            }
+        }
+    }
+
+
+    // This method manages drop operations
+    private void DropTheCandies()
+    {
+
+        for (int i = 0; i < boardWidth; i++)
+        {
+
+            for (int j = 0; j < boardHeight; j++)
+            {
+
+                if (candies[i, j] != null)
                 {
 
-                    int endOfCombo = postX - 1;
+                    // a and b are placeholders for i and j
+                    int a = i;
+                    int b = j;
 
-                    for (int k = endOfCombo; k > i; k--)
+                    while (b - 1 > -1 && candies[a, b - 1] == null)
                     {
 
-                        destroyer[i, j] = candies[i, j];
-                        destroyer[k, j] = candies[k, j];
+                        SlideDown(a, b);
 
-                        GameObject go = Instantiate(candyBackground, candies[k, j].transform.position, candyBackground.transform.rotation);
-                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
-                        go = Instantiate(candyBackground, candies[i, j].transform.position, candyBackground.transform.rotation);
-                        go.gameObject.GetComponent<SpriteRenderer>().sortingOrder = -1;
+                        b -= 1;
 
                     }
                 }
@@ -199,30 +267,34 @@ public class GameBoardManager : MonoBehaviour
         }
     }
 
-    // This method generates boardWidth x boardHeight gameboard
-    public void GenerateBoard()
+
+    // This method shifts the candy by one unit and changes the position in the candy[,] matrix
+    private void SlideDown(int a, int b)
     {
 
-        for (int i = 0; i < boardHeight; i++)
-        {
-
-            for (int j = 0; j < boardWidth; j++)
-            {
-
-                int randomCandyIndex = Random.Range(0, prefabs.Length);
-
-
-                GameObject newCandy = Instantiate(prefabs[randomCandyIndex], transform.position, prefabs[randomCandyIndex].transform.rotation);
-                newCandy.transform.parent = transform;
-                newCandy.transform.localPosition = new Vector2(i, j);
-
-                candies[i, j] = newCandy;
-            }
-
-        }
+        candies[a, b].transform.position -= new Vector3(0, 1, 0);
+        candies[a, b - 1] = candies[a, b];
+        candies[a, b] = null;
 
     }
 
+
+    // This method fills the gaps
+    private void FillTheGaps(int i, int j)
+    {
+
+        int randomCandyIndex = Random.Range(0, prefabs.Length);
+
+        GameObject newCandy = Instantiate(prefabs[randomCandyIndex], transform.position, prefabs[randomCandyIndex].transform.rotation);
+        newCandy.transform.parent = transform;
+        newCandy.transform.localPosition = new Vector2(i, j);
+
+        candies[i, j] = newCandy;
+
+    }
+
+
+    // This method swipes selected candy wþth neighbor candy
     private void SwipeOperations(Vector2 move)
     {
 
@@ -234,8 +306,5 @@ public class GameBoardManager : MonoBehaviour
         candies[(int)selectedCandy.transform.localPosition.x, (int)selectedCandy.transform.localPosition.y] = selectedCandy;
         candies[(int)selectedNeighbor.transform.localPosition.x, (int)selectedNeighbor.transform.localPosition.y] = selectedNeighbor;
 
-
-        CheckBoardForCombos();
     }
-
 }

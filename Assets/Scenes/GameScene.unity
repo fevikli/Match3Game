@@ -259,6 +259,7 @@ MonoBehaviour:
   - {fileID: 3018857510672523759, guid: 08948b25e03466f4bb1155f1c4aa85f5, type: 3}
   - {fileID: 724529824835353059, guid: 1f55f71611fad5342a961bb7c773208a, type: 3}
   - {fileID: 5041959436798333562, guid: 3c79da334a69c7c42ac74d71b55317d8, type: 3}
+  explosionPrefab: {fileID: 5184052435157925489, guid: 9483609ce62583c4e9118523ccb2c891, type: 3}
   selectedCandy: {fileID: 0}
   selectedNeighbor: {fileID: 0}
 --- !u!1 &519420028
