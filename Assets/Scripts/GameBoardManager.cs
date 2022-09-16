@@ -10,11 +10,17 @@ public class GameBoardManager : MonoBehaviour
     private Vector2 postMousePos;
     private Vector2 swipe;
     public Vector2 selectedCandyPosition;
+    [SerializeField] int score;
+    [SerializeField] int moveCount = 10;
+    [SerializeField] int pointPerCandy = 5;
+    private int combo;
     private static int boardWidth = 7;
     private static int boardHeight = 7;
     private int row;
     private int col;
     private bool hit;
+
+    private bool isGameRunning;
     // end of variables
 
 
@@ -33,6 +39,11 @@ public class GameBoardManager : MonoBehaviour
     void Start()
     {
 
+        isGameRunning = true;
+        score = 0;
+
+        UIManager.Instance.UpdateMoveCount(moveCount);
+
         GenerateBoard();
 
     }
@@ -40,61 +51,77 @@ public class GameBoardManager : MonoBehaviour
     void Update()
     {
 
-        if (Input.GetMouseButtonDown(0))
+        if(isGameRunning)
         {
 
-            preMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-
-            RaycastHit2D hitInfo = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hitInfo.collider != null)
+            if (Input.GetMouseButtonDown(0))
             {
 
-                Debug.Log(hitInfo.transform.gameObject.tag);
-                selectedCandy = hitInfo.transform.gameObject;
-                selectedCandyPosition = selectedCandy.transform.localPosition;
-                //row = (int)selectedCandyPosition.x;
-                //col = (int)selectedCandyPosition.y;
-                Debug.Log("Selected pos" + selectedCandyPosition);
+                preMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-                hit = true;
+                RaycastHit2D hitInfo = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+                if (hitInfo.collider != null)
+                {
 
+                    Debug.Log(hitInfo.transform.gameObject.tag);
+                    selectedCandy = hitInfo.transform.gameObject;
+                    selectedCandyPosition = selectedCandy.transform.localPosition;
+                    //row = (int)selectedCandyPosition.x;
+                    //col = (int)selectedCandyPosition.y;
+                    Debug.Log("Selected pos" + selectedCandyPosition);
+
+                    hit = true;
+
+                }
+                else
+                {
+
+                    hit = false;
+                    Debug.Log("No hit");
+
+                }
             }
-            else
+
+            if (Input.GetMouseButtonUp(0))
             {
 
-                hit = false;
-                Debug.Log("No hit");
+                if (hit)
+                {
 
+                    Vector2 distanceBetweenMousePositions;
+                    postMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+                    distanceBetweenMousePositions = postMousePos - preMousePos;
+
+                    swipe.x = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.x), -1, 1);
+                    swipe.y = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.y), -1, 1);
+                    Debug.Log("Swipe" + swipe);
+
+                    Vector2 selectedNeighborPosition = selectedCandyPosition + swipe;
+                    Debug.Log("Selectet neighbor" + selectedNeighborPosition);
+
+                    selectedNeighbor = candies[(int)selectedNeighborPosition.x, (int)selectedNeighborPosition.y];
+
+                    Debug.Log("x : " + swipe.x + ", y : " + swipe.y);
+
+                    if(Mathf.Abs(distanceBetweenMousePositions.x ) > 0.5f || Mathf.Abs(distanceBetweenMousePositions.y) > 0.5f)
+                    {
+
+                        SwipeOperations(swipe);
+
+                    }
+                }
             }
+
+            CheckBoardForCombos();
+
         }
-
-        if (Input.GetMouseButtonUp(0))
+        else
         {
 
-            if (hit)
-            {
+            UIManager.Instance.ActivateGameOverPanel();
 
-                Vector2 distanceBetweenMousePositions;
-                postMousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-                distanceBetweenMousePositions = postMousePos - preMousePos;
-
-                swipe.x = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.x), -1, 1);
-                swipe.y = (int)Mathf.Clamp(Mathf.Round(distanceBetweenMousePositions.y), -1, 1);
-                Debug.Log("Swipe" + swipe);
-
-                Vector2 selectedNeighborPosition = selectedCandyPosition + swipe;
-                Debug.Log("Selectet neighbor" + selectedNeighborPosition);
-
-                selectedNeighbor = candies[(int)selectedNeighborPosition.x, (int)selectedNeighborPosition.y];
-
-                Debug.Log("x : " + swipe.x + ", y : " + swipe.y);
-
-                SwipeOperations(swipe);
-
-            }
         }
-
-        CheckBoardForCombos();
+        
 
     }
 
@@ -140,7 +167,7 @@ public class GameBoardManager : MonoBehaviour
 
             for (int i = 0; i < boardWidth; i++)
             {
-                int combo = 0;
+                combo = 0;
 
                 int postX = i + 1;
 
@@ -164,6 +191,9 @@ public class GameBoardManager : MonoBehaviour
                         destroyer[k, j] = candies[k, j];
 
                     }
+
+                    AddScore(combo);
+
                 }
             }
         }
@@ -180,7 +210,7 @@ public class GameBoardManager : MonoBehaviour
             for (int j = 0; j < boardHeight; j++)
             {
 
-                int combo = 0;
+                combo = 0;
                 int postY = j + 1;
 
                 while (postY < boardHeight && candies[i, j].name == candies[i, postY].name)
@@ -203,6 +233,9 @@ public class GameBoardManager : MonoBehaviour
                         destroyer[i, k] = candies[i, k];
 
                     }
+
+                    AddScore(combo);
+
                 }
             }
         }
@@ -305,6 +338,28 @@ public class GameBoardManager : MonoBehaviour
 
         candies[(int)selectedCandy.transform.localPosition.x, (int)selectedCandy.transform.localPosition.y] = selectedCandy;
         candies[(int)selectedNeighbor.transform.localPosition.x, (int)selectedNeighbor.transform.localPosition.y] = selectedNeighbor;
+
+
+        moveCount--;
+        UIManager.Instance.UpdateMoveCount(moveCount);
+        if (moveCount <=0 )
+        {
+
+            isGameRunning = false;
+
+        }
+
+    }
+
+
+    // This method increases score and gives info to UIManager
+    private void AddScore(int combo)
+    {
+
+        combo++;
+        score += (combo * pointPerCandy);
+
+        UIManager.Instance.UpdateScore(score);
 
     }
 }
