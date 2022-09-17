@@ -118,6 +118,7 @@ public class GameBoardManager : MonoBehaviour
         else
         {
 
+            GenerateBoard();
             UIManager.Instance.ActivateGameOverPanel();
 
         }

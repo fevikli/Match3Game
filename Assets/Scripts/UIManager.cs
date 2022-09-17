@@ -47,6 +47,13 @@ public class UIManager : MonoBehaviour
 
     }
 
+    public void MainMenu()
+    {
+
+        SceneManager.LoadScene("MainMenu");
+
+    }
+
     public void Quitgame()
     {
 #if UNITY_EDITOR
